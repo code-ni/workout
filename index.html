@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="训练助手">
+  <meta name="theme-color" content="#4A90D9">
+  <link rel="manifest" href="manifest.json">
+  <title>办公室救急训练助手</title>
+  <style>
+    :root {
+      --primary: #4A90D9;
+      --primary-dark: #357ABD;
+      --danger: #E85D75;
+      --success: #5CB85C;
+      --warning: #f0ad4e;
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --text: #2c3e50;
+      --text-light: #7f8c8d;
+      --border: #e8ecf1;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px;
+      -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+    }
+    .header {
+      background: linear-gradient(135deg, #4A90D9, #357ABD); color: white; padding: 16px 20px;
+      display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0;
+      z-index: 100; box-shadow: 0 2px 12px rgba(74,144,217,0.3);
+    }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header-time { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stats-bar {
+      display: flex; background: white; margin: 16px; border-radius: var(--radius);
+      padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); gap: 12px;
+    }
+    .stat-item { flex: 1; text-align: center; position: relative; }
+    .stat-item:not(:last-child)::after {
+      content: ''; position: absolute; right: 0; top: 20%; height: 60%; width: 1px; background: var(--border);
+    }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+    .card {
+      background: var(--card); border-radius: var(--radius); padding: 16px; margin: 0 16px 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .card-title { font-size: 16px; font-weight: 700; }
+    .card-badge { font-size: 11px; background: #e8f4fd; color: var(--primary); padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    .task-item {
+      display: flex; align-items: center; padding: 14px; background: #fafbfc; border-radius: var(--radius-sm);
+      margin-bottom: 8px; gap: 12px; border-left: 4px solid var(--border); transition: all 0.25s;
+    }
+    .task-item.overdue { border-left-color: #e0e0e0; opacity: 0.5; }
+    .task-item.active { border-left-color: var(--danger); background: #fff5f5; animation: pulse-border 2s infinite; }
+    .task-item.done { border-left-color: var(--success); background: #f6fdf6; opacity: 0.75; }
+    .task-item.upcoming { border-left-color: var(--warning); }
+    @keyframes pulse-border { 0%,100% { box-shadow: 0 0 0 0 rgba(232,93,117,0.3); } 50% { box-shadow: 0 0 0 6px rgba(232,93,117,0); } }
+    .task-time-col { text-align: center; min-width: 48px; }
+    .task-time { font-weight: 700; font-size: 15px; color: var(--primary); }
+    .task-period { font-size: 10px; color: var(--text-light); }
+    .task-info { flex: 1; min-width: 0; }
+    .task-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task-meta { font-size: 11px; color: var(--text-light); display: flex; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 16px;
+      border-radius: 20px; font-size: 13px; font-weight: 600; border: none; cursor: pointer;
+      transition: all 0.15s; white-space: nowrap; min-height: 36px;
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; min-height: 30px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+    .btn-ghost { background: transparent; color: var(--primary); }
+    .btn-block { width: 100%; }
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%;
+      max-width: 500px; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+      display: flex; border-top: 1px solid var(--border); z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .nav-btn {
+      flex: 1; text-align: center; padding: 8px 4px 6px; border: none; background: none;
+      font-size: 11px; color: #999; cursor: pointer; transition: all 0.2s;
+    }
+    .nav-btn.active { color: var(--primary); }
+    .nav-icon { font-size: 22px; display: block; margin-bottom: 1px; }
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: flex;
+      align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+    .sheet {
+      background: white; border-radius: 20px 20px 0 0; width: 100%; max-width: 500px;
+      max-height: 85vh; overflow-y: auto; padding: 20px 16px 30px; transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .overlay.show .sheet { transform: translateY(0); }
+    .timer-display { font-size: 64px; font-weight: 800; text-align: center; color: var(--primary); margin: 12px 0; }
+    .timer-display.warning { color: var(--danger); animation: blink 0.5s infinite; }
+    @keyframes blink { 50% { opacity: 0.3; } }
+    .exercise-media {
+      width: 100%; aspect-ratio: 16/9; background: #1a1a2e; border-radius: 12px; overflow: hidden;
+      margin-bottom: 12px; display: flex; align-items: center; justify-content: center; position: relative;
+    }
+    .exercise-media .placeholder-text { color: rgba(255,255,255,0.6); font-size: 13px; position: absolute; }
+    .exercise-steps { background: #f8f9fb; padding: 14px; border-radius: 12px; font-size: 13px; line-height: 1.8; }
+    .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { flex: 1; min-width: 100px; margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 4px; }
+    .form-group select, .form-group input {
+      width: 100%; padding: 10px 12px; border: 2px solid var(--border); border-radius: 10px;
+      font-size: 14px; background: white; appearance: none; -webkit-appearance: none;
+    }
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%234A90D9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px;
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+    .toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #2c3e50;
+      color: white; padding: 10px 22px; border-radius: 25px; z-index: 300; font-size: 13px;
+      font-weight: 600; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🏢 训练助手</h1>
+    <div class="header-time" id="liveClock">--:--</div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <!-- 今日任务页 -->
+  <div id="page-today" class="page active">
+    <div class="stats-bar">
+      <div class="stat-item"><div class="stat-value" id="statTotal">0</div><div class="stat-label">今日任务</div></div>
+      <div class="stat-item"><div class="stat-value" id="statDone">0</div><div class="stat-label">已完成</div></div>
+      <div class="stat-item"><div class="stat-value" id="statMinutes">0</div><div class="stat-label">训练分钟</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 今日训练清单</span>
+        <span class="card-badge" id="remainingBadge">0 项待完成</span>
+      </div>
+      <div id="taskList"><p style="color:#999;text-align:center;padding:24px;">✨ 还没有任务<br><small>点击底部「添加」或导入推荐计划</small></p></div>
+      <button class="btn btn-outline btn-block" onclick="importRecommended()" style="margin-top:8px;">📥 一键导入推荐计划</button>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="exportToCalendar()" style="flex:1;">📅 导出日历提醒</button>
+        <button class="btn btn-ghost btn-sm" onclick="testTelegram()" style="flex:1;" id="btnTestTg">🤖 测试Telegram</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加任务页 -->
+  <div id="page-add" class="page">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">➕ 添加训练任务</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 100px;"><label>⏰ 时间</label><input type="time" id="inputTime" value="09:45"></div>
+        <div class="form-group"><label>🏋️ 动作</label><select id="inputExercise"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>🔁 重复</label>
+          <select id="inputRepeat">
+            <option value="weekdays">工作日</option>
+            <option value="daily">每天</option>
+            <option value="none">仅一次</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="addTask()">✅ 添加到日程</button>
+    </div>
+
+    <!-- 通知设置 -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">🔔 通知设置（Telegram）</div>
+      <div class="form-group"><label>Bot Token</label><input type="text" id="tgToken" placeholder="从 @BotFather 获取"></div>
+      <div class="form-group"><label>Chat ID</label><input type="text" id="tgChatId" placeholder="从 @userinfobot 获取"></div>
+      <button class="btn btn-outline btn-block btn-sm" onclick="saveTelegramConfig()">💾 保存设置</button>
+      <p style="font-size:11px;color:var(--text-light);margin-top:6px;">配置后到时间自动发消息提醒你</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">📖 动作库</div>
+      <div id="libList" style="max-height:250px;overflow-y:auto;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px;">⚙️ 数据</div>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">📤 导出</button>
+      <button class="btn btn-ghost btn-sm" onclick="importData()">📥 导入</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearAll()">🗑 清空</button>
+    </div>
+  </div>
+
+  <!-- 底部导航 -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="switchPage('today', this)"><span class="nav-icon">📅</span> 今日</button>
+    <button class="nav-btn" onclick="switchPage('add', this)"><span class="nav-icon">➕</span> 添加</button>
+  </div>
+
+  <!-- 训练弹窗 -->
+  <div class="overlay" id="trainingOverlay">
+    <div class="sheet">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h2 id="modalTitle" style="font-size:17px;">训练中</h2>
+        <span id="modalScene" style="font-size:12px;color:var(--text-light);"></span>
+      </div>
+      <div class="exercise-media" id="mediaArea"><span class="placeholder-text">📹 动作演示</span></div>
+      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="exercise-steps" id="exerciseSteps"></div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-outline" onclick="togglePause()" id="btnPause" style="flex:1;">⏯ 暂停</button>
+        <button class="btn btn-danger" onclick="endTraining(false)" style="flex:1;">⏹ 结束</button>
+      </div>
+      <button class="btn btn-success btn-block" onclick="endTraining(true)" style="margin-top:8px;">✅ 提前完成</button>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 动作库 ====================
+    const EXERCISE_DB = {
+      '靠墙站肩复位': { scene: '站立', duration: 60, steps: ['后背贴墙，双脚离墙10cm','双肩向后下方沉，肩胛骨贴墙','下巴微收，保持10秒×3次'], media: '' },
+      '办公椅扩胸后伸': { scene: '坐/站', duration: 120, steps: ['双手交叉放脑后，手肘外展','向后展开肩胛骨','轻仰头，保持5秒×10次'], media: '' },
+      '墙角/门框拉伸': { scene: '站立', duration: 120, steps: ['站在墙角/门框边','手臂伸直贴墙，与肩同高','身体向对侧转，左右各20秒'], media: '' },
+      '坐姿肩胛收缩': { scene: '坐着', duration: 60, steps: ['双手放大腿','双肩向后下方沉，想象肩胛骨夹纸','保持5秒后放松×10次'], media: '' },
+      '颈部抗阻训练': { scene: '坐着', duration: 60, steps: ['双手交叉放脑后','手向前推，颈向后对抗','保持3秒×15次'], media: '' },
+      '桌下抬腿勾脚': { scene: '坐着', duration: 60, steps: ['坐直，左腿伸直，脚尖上勾','保持10秒，换腿×3次'], media: '' }
+    };
+
+    // ==================== 存储键 ====================
+    const TASKS_KEY = 'wkt_tasks_v2';
+    const TG_TOKEN_KEY = 'tg_bot_token';
+    const TG_CHATID_KEY = 'tg_chat_id';
+
+    function getTasks() { try { return JSON.parse(localStorage.getItem(TASKS_KEY) || '[]'); } catch(e) { return []; } }
+    function saveTasks(arr) { localStorage.setItem(TASKS_KEY, JSON.stringify(arr)); }
+    function getTelegramConfig() {
+      return { token: localStorage.getItem(TG_TOKEN_KEY) || '', chatId: localStorage.getItem(TG_CHATID_KEY) || '' };
+    }
+    function saveTelegramConfig() {
+      let token = document.getElementById('tgToken').value.trim();
+      let chatId = document.getElementById('tgChatId').value.trim();
+      localStorage.setItem(TG_TOKEN_KEY, token);
+      localStorage.setItem(TG_CHATID_KEY, chatId);
+      showToast('✅ Telegram 设置已保存');
+      testTelegram(); // 顺便测试
+    }
+
+    // ==================== 语音 ====================
+    let synth = window.speechSynthesis, voice = null;
+    function loadVoice() { if(synth){ let voices = synth.getVoices(); voice = voices.find(v=>v.lang.startsWith('zh')) || voices[0]; } }
+    loadVoice(); if(synth) synth.onvoiceschanged = loadVoice;
+    function speak(text, cb) { if(!synth) return; synth.cancel(); let u = new SpeechSynthesisUtterance(text); u.voice = voice; u.lang='zh-CN'; u.rate=0.9; u.onend=cb||null; synth.speak(u); }
+
+    function showToast(msg) {
+      let t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(t._tid); t._tid = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function notifyBrowser(title, body) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, tag: 'workout' });
+      }
+    }
+
+    // ==================== Telegram 通知 ====================
+    async function sendTelegramMessage(text) {
+      const { token, chatId } = getTelegramConfig();
+      if (!token || !chatId) return false;
+      try {
+        let res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: text })
+        });
+        return res.ok;
+      } catch (e) {
+        console.warn('Telegram send failed', e);
+        return false;
+      }
+    }
+
+    async function testTelegram() {
+      let ok = await sendTelegramMessage('✅ 训练助手连接成功！到时间会自动提醒你。');
+      if (ok) showToast('✅ Telegram 测试消息已发送');
+      else showToast('❌ 发送失败，请检查 Token 和 Chat ID');
+    }
+
+    // ==================== 日历导出 ====================
+    function exportToCalendar() {
+      let tasks = getTodayTasks().filter(t => !t.done);
+      if (tasks.length === 0) { showToast('今日没有待完成的任务'); return; }
+      let now = new Date();
+      let ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WorkoutApp//CN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:办公室训练提醒'];
+      tasks.forEach(t => {
+        let [h,m] = t.time.split(':').map(Number);
+        let start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+        let end = new Date(start.getTime() + 5 * 60000);
+        ics.push('BEGIN:VEVENT',
+          'DTSTART:' + formatICSDate(start),
+          'DTEND:' + formatICSDate(end),
+          'SUMMARY:' + t.exercise,
+          'DESCRIPTION:场景：' + (EXERCISE_DB[t.exercise]?.scene||'') + '\\n时长：' + Math.floor((EXERCISE_DB[t.exercise]?.duration||60)/60) + '分钟',
+          'BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY','DESCRIPTION:该做「' + t.exercise + '」了！','END:VALARM',
+          'END:VEVENT');
+      });
+      ics.push('END:VCALENDAR');
+      let blob = new Blob([ics.join('\r\n')], {type:'text/calendar;charset=utf-8'});
+      let a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'training-' + now.toISOString().slice(0,10) + '.ics'; a.click();
+      showToast('📅 日历文件已下载，打开导入系统日历');
+    }
+    function formatICSDate(date) {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    }
+
+    // ==================== 训练逻辑 ====================
+    let timer = null, remaining = 0, paused = false, currentTask = null;
+    function startTraining(task) {
+      currentTask = task;
+      let ex = EXERCISE_DB[task.exercise] || Object.values(EXERCISE_DB)[0];
+      remaining = ex.duration; paused = false;
+      document.getElementById('modalTitle').textContent = task.exercise;
+      document.getElementById('modalScene').textContent = '场景：' + ex.scene;
+      updateTimerDisplay();
+      document.getElementById('timerDisplay').classList.remove('warning');
+      document.getElementById('btnPause').textContent = '⏯ 暂停';
+      document.getElementById('exerciseSteps').innerHTML = ex.steps.map((s,i)=>
+        `<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;"><span class="step-num">${i+1}</span><span>${s}</span></div>`
+      ).join('');
+      let mediaArea = document.getElementById('mediaArea');
+      if (ex.media) {
+        if (ex.media.match(/\.(mp4|webm|mov)/i)) {
+          mediaArea.innerHTML = `<video src="${ex.media}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>`;
+        } else {
+          mediaArea.innerHTML = `<img src="${ex.media}" style="width:100%;height:100%;object-fit:cover;">`;
+        }
+      } else {
+        mediaArea.innerHTML = '<span class="placeholder-text">📹 动作演示<br><small>可在代码中替换为你的视频链接</small></span>';
+      }
+      document.getElementById('trainingOverlay').classList.add('show');
+      speak(`开始训练，${task.exercise}，${Math.floor(ex.duration/60)}分钟`);
+      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+      clearInterval(timer);
+      timer = setInterval(tick, 1000);
+    }
+    function tick() {
+      if (paused) return;
+      remaining--;
+      updateTimerDisplay();
+      if (remaining <= 10) {
+        document.getElementById('timerDisplay').classList.add('warning');
+        if (remaining === 10) speak('还剩10秒');
+        else if (remaining === 5) speak('5');
+        else if (remaining === 3) speak('3');
+        else if (remaining === 2) speak('2');
+        else if (remaining === 1) speak('1');
+      }
+      if (remaining <= 0) endTraining(true);
+    }
+    function togglePause() { paused = !paused; document.getElementById('btnPause').textContent = paused ? '▶ 继续' : '⏯ 暂停'; }
+    function endTraining(completed) {
+      clearInterval(timer); timer = null;
+      document.getElementById('trainingOverlay').classList.remove('show');
+      document.getElementById('timerDisplay').classList.remove('warning');
+      if (navigator.vibrate) navigator.vibrate(0);
+      if (completed && currentTask) {
+        markDone(currentTask.id);
+        speak('训练完成，很棒！');
+        showToast('✅ 训练完成！');
+        notifyBrowser('训练完成', currentTask.exercise);
+      }
+      currentTask = null; paused = false; renderToday();
+    }
+    function updateTimerDisplay() {
+      let m = Math.floor(remaining/60), s = remaining%60;
+      document.getElementById('timerDisplay').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    }
+    function markDone(id) {
+      let tasks = getTasks(); let idx = tasks.findIndex(t=>t.id===id);
+      if(idx!==-1){ tasks[idx].done=true; tasks[idx].doneDate=new Date().toDateString(); saveTasks(tasks); }
+    }
+
+    // ==================== 任务管理 ====================
+    function addTask() {
+      let time = document.getElementById('inputTime').value;
+      let exercise = document.getElementById('inputExercise').value;
+      let repeat = document.getElementById('inputRepeat').value;
+      if(!time){ showToast('请选择时间'); return; }
+      let tasks = getTasks();
+      tasks.push({ id: Date.now(), time, exercise, repeat, done: false, doneDate: null });
+      saveTasks(tasks); showToast('✅ 已添加'); renderToday();
+    }
+    function importRecommended() {
+      let base = [
+        { time:'09:00', exercise:'靠墙站肩复位' },{ time:'09:45', exercise:'坐姿肩胛收缩' },
+        { time:'10:30', exercise:'颈部抗阻训练' },{ time:'11:15', exercise:'墙角/门框拉伸' },
+        { time:'14:00', exercise:'办公椅扩胸后伸' },{ time:'14:45', exercise:'坐姿肩胛收缩' },
+        { time:'15:30', exercise:'颈部抗阻训练' },{ time:'16:15', exercise:'桌下抬腿勾脚' },
+        { time:'17:00', exercise:'墙角/门框拉伸' }
+      ];
+      let tasks = getTasks();
+      let existing = new Set(tasks.map(t=>t.time+'|'+t.exercise));
+      let added=0;
+      base.forEach(b=>{ if(!existing.has(b.time+'|'+b.exercise)){ tasks.push({ id:Date.now()+Math.random()*10000, ...b, repeat:'weekdays', done:false, doneDate:null }); added++; } });
+      saveTasks(tasks); showToast('✅ 导入 '+added+' 项'); renderToday();
+    }
+    function getTodayTasks() {
+      let now=new Date(), today=now.toDateString(), dow=now.getDay();
+      return getTasks().filter(t=>{
+        if(t.repeat==='daily') return true;
+        if(t.repeat==='weekdays') return dow>=1 && dow<=5;
+        return t.doneDate===today || !t.done;
+      }).sort((a,b)=>a.time.localeCompare(b.time));
+    }
+    function renderToday() {
+      let tasks = getTodayTasks(), now=new Date(), nowStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'), todayStr=now.toDateString();
+      let doneCount=0, totalMin=0;
+      let listEl = document.getElementById('taskList');
+      if(tasks.length===0){
+        listEl.innerHTML='<p style="color:#999;text-align:center;padding:24px;">✨ 暂无今日任务</p>';
+      } else {
+        listEl.innerHTML = tasks.map(t=>{
+          let ex=EXERCISE_DB[t.exercise]||{}, isDone=t.done && t.doneDate===todayStr;
+          if(isDone){ doneCount++; totalMin+=Math.floor((ex.duration||60)/60); }
+          let cls='', badge='';
+          if(isDone){ cls='done'; badge='✅'; }
+          else if(t.time===nowStr){ cls='active'; badge='🔔'; }
+          else if(t.time<nowStr){ cls='overdue'; badge='⏰'; }
+          else { cls='upcoming'; badge='⏳'; }
+          return `<div class="task-item ${cls}">
+            <div class="task-time-col"><div class="task-time">${t.time}</div><div class="task-period">${badge}</div></div>
+            <div class="task-info"><div class="task-name">${t.exercise}</div><div class="task-meta"><span>${ex.scene||''}</span><span>${Math.floor((ex.duration||60)/60)}分钟</span></div></div>
+            <div class="task-action">${isDone ? '<span style="color:var(--success);font-size:12px;">完成</span>' : `<button class="btn btn-primary btn-sm" onclick="startTraining({id:${t.id},exercise:'${t.exercise}'})">▶ 开始</button>`}</div>
+          </div>`;
+        }).join('');
+      }
+      document.getElementById('statTotal').textContent = tasks.length;
+      document.getElementById('statDone').textContent = doneCount;
+      document.getElementById('statMinutes').textContent = totalMin;
+      document.getElementById('remainingBadge').textContent = (tasks.length-doneCount)+' 项待完成';
+
+      // 提醒逻辑：本地 toast/语音 + Telegram 消息
+      let pending = tasks.find(t=>t.time===nowStr && !t.done && t.doneDate!==todayStr);
+      if(pending && pending.id !== window._lastRemindId){
+        window._lastRemindId = pending.id;
+        showToast(`🔔 ${pending.time} 该做「${pending.exercise}」了！`);
+        speak(`时间到了，该做${pending.exercise}了`);
+        notifyBrowser('训练提醒', pending.exercise);
+        if(navigator.vibrate) navigator.vibrate([300,200,300,200,500]);
+        // 发送 Telegram 通知
+        sendTelegramMessage(`🔔 训练提醒：${pending.time} 该做「${pending.exercise}」了！\n场景：${EXERCISE_DB[pending.exercise]?.scene||''}`);
+      }
+    }
+
+    function switchPage(name, btn){
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById('page-'+name).classList.add('active');
+      if(btn) btn.classList.add('active');
+      if(name==='add') populateForm();
+    }
+    function populateForm(){
+      let sel=document.getElementById('inputExercise');
+      if(sel.options.length===0) sel.innerHTML = Object.keys(EXERCISE_DB).map(k=>`<option value="${k}">${k}</option>`).join('');
+      document.getElementById('libList').innerHTML = Object.entries(EXERCISE_DB).map(([k,v])=>`<div style="padding:8px 0;border-bottom:1px solid #f0f0f0;"><b>${k}</b><br><small>${v.scene} · ${Math.floor(v.duration/60)}分钟</small></div>`).join('');
+      // 加载 Telegram 配置
+      let cfg = getTelegramConfig();
+      document.getElementById('tgToken').value = cfg.token;
+      document.getElementById('tgChatId').value = cfg.chatId;
+    }
+    function exportData(){
+      let blob=new Blob([localStorage.getItem(TASKS_KEY)||'[]'],{type:'application/json'});
+      let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='workout-backup-'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+      showToast('📤 已导出');
+    }
+    function importData(){
+      let inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+      inp.onchange=e=>{ let reader=new FileReader(); reader.onload=()=>{ try{ let data=JSON.parse(reader.result); if(Array.isArray(data)){ saveTasks(data); renderToday(); showToast('📥 已导入'); } } catch(ex){ showToast('❌ 格式错误'); } }; reader.readAsText(e.target.files[0]); };
+      inp.click();
+    }
+    function clearAll(){ if(confirm('清空所有任务？')){ localStorage.removeItem(TASKS_KEY); renderToday(); showToast('🗑 已清空'); } }
+    function updateClock(){
+      let now=new Date(); document.getElementById('liveClock').textContent = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+    }
+
+    // ==================== 初始化 ====================
+    function init(){
+      updateClock(); renderToday();
+      if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+      if(synth) synth.getVoices();
+      // 加载Telegram配置到输入框（如果已保存）
+      let cfg = getTelegramConfig();
+      document.getElementById('tgToken').value = cfg.token;
+      document.getElementById('tgChatId').value = cfg.chatId;
+      setInterval(()=>{ updateClock(); renderToday(); }, 30000);
+      console.log('✅ 训练助手已启动，Telegram通知已准备');
+    }
+    document.getElementById('trainingOverlay').addEventListener('click', function(e){ if(e.target===this && !timer) this.classList.remove('show'); });
+    init();
+  </script>
+</body>
+</html>
