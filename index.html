@@ -185,13 +185,19 @@
     </div>
 
     <!-- 通知设置 -->
-    <div class="card">
-      <div class="card-title" style="margin-bottom:8px;">🔔 通知设置（Telegram）</div>
-      <div class="form-group"><label>Bot Token</label><input type="text" id="tgToken" placeholder="从 @BotFather 获取"></div>
-      <div class="form-group"><label>Chat ID</label><input type="text" id="tgChatId" placeholder="从 @userinfobot 获取"></div>
-      <button class="btn btn-outline btn-block btn-sm" onclick="saveTelegramConfig()">💾 保存设置</button>
-      <p style="font-size:11px;color:var(--text-light);margin-top:6px;">配置后到时间自动发消息提醒你</p>
-    </div>
+<!-- 通知设置（钉钉） -->
+<div class="card">
+  <div class="card-title" style="margin-bottom:8px;">🔔 通知设置（钉钉机器人）</div>
+  <div class="form-group">
+    <label>Webhook 地址</label>
+    <input type="text" id="ddWebhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=6359b4c454ae36d24bb207a075a268cd9f9daecdd0ffca259a433528276a78fa">
+  </div>
+  <button class="btn btn-outline btn-block btn-sm" onclick="saveDingDingConfig()">💾 保存设置</button>
+  <button class="btn btn-outline btn-block btn-sm" onclick="testDingDing()">🤖 测试钉钉通知</button>
+  <p style="font-size:11px;color:var(--text-light);margin-top:6px;">
+    ① 建一个只有自己的钉钉群 → ② 加自定义机器人，关键词填“训练” → ③ 粘贴 Webhook
+  </p>
+</div>
 
     <div class="card">
       <div class="card-title" style="margin-bottom:8px;">📖 动作库</div>
@@ -232,12 +238,12 @@
   <script>
     // ==================== 动作库 ====================
     const EXERCISE_DB = {
-      '靠墙站肩复位': { scene: '站立', duration: 60, steps: ['后背贴墙，双脚离墙10cm','双肩向后下方沉，肩胛骨贴墙','下巴微收，保持10秒×3次'], media: '' },
-      '办公椅扩胸后伸': { scene: '坐/站', duration: 120, steps: ['双手交叉放脑后，手肘外展','向后展开肩胛骨','轻仰头，保持5秒×10次'], media: '' },
-      '墙角/门框拉伸': { scene: '站立', duration: 120, steps: ['站在墙角/门框边','手臂伸直贴墙，与肩同高','身体向对侧转，左右各20秒'], media: '' },
-      '坐姿肩胛收缩': { scene: '坐着', duration: 60, steps: ['双手放大腿','双肩向后下方沉，想象肩胛骨夹纸','保持5秒后放松×10次'], media: '' },
-      '颈部抗阻训练': { scene: '坐着', duration: 60, steps: ['双手交叉放脑后','手向前推，颈向后对抗','保持3秒×15次'], media: '' },
-      '桌下抬腿勾脚': { scene: '坐着', duration: 60, steps: ['坐直，左腿伸直，脚尖上勾','保持10秒，换腿×3次'], media: '' }
+      '靠墙站肩复位训练': { scene: '站立', duration: 60, steps: ['后背贴墙，双脚离墙10cm','双肩向后下方沉，肩胛骨贴墙','下巴微收，保持10秒×3次'], media: '' },
+      '办公椅扩胸后伸训练': { scene: '坐/站', duration: 120, steps: ['双手交叉放脑后，手肘外展','向后展开肩胛骨','轻仰头，保持5秒×10次'], media: '' },
+      '墙角/门框拉伸训练': { scene: '站立', duration: 120, steps: ['站在墙角/门框边','手臂伸直贴墙，与肩同高','身体向对侧转，左右各20秒'], media: '' },
+      '坐姿肩胛收缩训练': { scene: '坐着', duration: 60, steps: ['双手放大腿','双肩向后下方沉，想象肩胛骨夹纸','保持5秒后放松×10次'], media: '' },
+      '颈部抗阻训练训练': { scene: '坐着', duration: 60, steps: ['双手交叉放脑后','手向前推，颈向后对抗','保持3秒×15次'], media: '' },
+      '桌下抬腿勾脚训练': { scene: '坐着', duration: 60, steps: ['坐直，左腿伸直，脚尖上勾','保持10秒，换腿×3次'], media: '' }
     };
 
     // ==================== 存储键 ====================
@@ -276,29 +282,48 @@
       }
     }
 
-    // ==================== Telegram 通知 ====================
-    async function sendTelegramMessage(text) {
-      const { token, chatId } = getTelegramConfig();
-      if (!token || !chatId) return false;
-      try {
-        let res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: text })
-        });
-        return res.ok;
-      } catch (e) {
-        console.warn('Telegram send failed', e);
-        return false;
-      }
-    }
+// ==================== 钉钉通知 ====================
+const DD_WEBHOOK_KEY = 'https://oapi.dingtalk.com/robot/send?access_token=6359b4c454ae36d24bb207a075a268cd9f9daecdd0ffca259a433528276a78fa';
 
-    async function testTelegram() {
-      let ok = await sendTelegramMessage('✅ 训练助手连接成功！到时间会自动提醒你。');
-      if (ok) showToast('✅ Telegram 测试消息已发送');
-      else showToast('❌ 发送失败，请检查 Token 和 Chat ID');
-    }
+function getDingDingWebhook() {
+  return localStorage.getItem(DD_WEBHOOK_KEY) || '';
+}
 
+function saveDingDingConfig() {
+  let url = document.getElementById('ddWebhook').value.trim();
+  if (!url) { showToast('请填写 Webhook 地址'); return; }
+  localStorage.setItem(DD_WEBHOOK_KEY, url);
+  showToast('✅ 钉钉 Webhook 已保存');
+}
+
+// 加载时回填输入框（在 populateForm 函数里添加下面一行）
+// document.getElementById('ddWebhook').value = getDingDingWebhook();
+
+async function sendDingDingMessage(text) {
+  const webhook = getDingDingWebhook();
+  if (!webhook) return false;
+  try {
+    let res = await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        msgtype: 'text',
+        text: { content: text }
+      })
+    });
+    let data = await res.json();
+    return data.errcode === 0;
+  } catch (e) {
+    console.warn('钉钉发送失败', e);
+    return false;
+  }
+}
+
+async function testDingDing() {
+  let ok = await sendDingDingMessage('✅ 训练助手连接成功！到时间会自动提醒你。');
+  if (ok) showToast('✅ 钉钉测试消息已发送');
+  else showToast('❌ 发送失败，请检查 Webhook 和关键词设置');
+}
     // ==================== 日历导出 ====================
     function exportToCalendar() {
       let tasks = getTodayTasks().filter(t => !t.done);
